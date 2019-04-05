@@ -129,6 +129,7 @@ function createTodoNode(result) {
 	return {
 		type: TODO,
 		fsPath: result.file,
+		author: result.author,
 		label: label,
 		tag: extracted.tag,
 		line: result.line - 1,
@@ -274,7 +275,7 @@ class TreeNodeProvider {
 		return node.parent;
 	}
 
-	getTreeItem(node) {
+	async getTreeItem(node) {
 		var treeItem;
 		try {
 			treeItem = new vscode.TreeItem(node.label + (node.pathLabel ? (" " + node.pathLabel) : ""));
@@ -324,7 +325,7 @@ class TreeNodeProvider {
 				treeItem.iconPath = icons.getIcon(this._context, node.tag ? node.tag : node.label);
 				var format = config.labelFormat();
 				if (format !== "") {
-					treeItem.label = utils.formatLabel(format, node) + (node.pathLabel ? (" " + node.pathLabel) : "");
+					treeItem.label = node.author + ' :: ' + utils.formatLabel(format, node) + (node.pathLabel ? (" " + node.pathLabel) : "");
 				}
 
 				treeItem.command = {

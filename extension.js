@@ -8,11 +8,13 @@ var tree = require("./tree.js");
 var highlights = require('./highlights.js');
 var config = require('./config.js');
 var utils = require('./utils.js');
+var blame = require('./blame.js');
 
 var searchResults = [];
 var searchList = [];
 var currentFilter;
 var interrupted = false;
+var searchCompleted = false;
 var selectedDocument;
 var refreshTimeout;
 var openDocuments = {};
@@ -85,7 +87,7 @@ function activate(context) {
 			}
 		});
 
-		if (interrupted === false) {
+		if (searchCompleted && interrupted === false) {
 			updateStatusBar();
 		}
 
@@ -156,17 +158,19 @@ function activate(context) {
 
 		debug("Searching " + options.filename + "...");
 
-		ripgrep.search("/", options).then(matches => {
+		ripgrep.search("/", options).then(async (matches) => {
 			if (matches.length > 0) {
-				matches.forEach(match => {
+				for (const i in matches) {
+					const match = matches[i];
 					debug(" Match: " + JSON.stringify(match));
+				
+					match.author = await blame.getAuthor(match.file, match.line);
 					searchResults.push(match);
-				});
+				}
 			}
 			else if (options.filename) {
 				removeFileFromSearchResults(options.filename);
 			}
-
 			onComplete();
 		}).catch(e => {
 			var message = e.message;
@@ -244,18 +248,22 @@ function activate(context) {
 			var entry = searchList.pop();
 			search(getOptions(entry), (searchList.length > 0) ? iterateSearchList : function () {
 				debug("Found " + searchResults.length + " items");
+
+				searchComplete = true;
 				applyGlobs();
 				addResultsToTree();
 				setButtonsAndContext();
+				refreshOpenFiles();
 			});
 		}
 		else {
 			addResultsToTree();
 			setButtonsAndContext();
+			refreshOpenFiles();
 		}
 	}
 
-	function rebuild() {
+	async function rebuild() {
 		function getRootFolders() {
 			var rootFolders = [];
 			var valid = true;
@@ -315,8 +323,6 @@ function activate(context) {
 		}
 
 		iterateSearchList();
-
-		refreshOpenFiles();
 	}
 
 	function setButtonsAndContext() {
@@ -344,7 +350,7 @@ function activate(context) {
 		return utils.isIncluded(filename, includeGlobs, excludeGlobs) === true;
 	}
 
-	function refreshFile(document) {
+	async function refreshFile(document) {
 		var matchesFound = false;
 
 		removeFileFromSearchResults(document.fileName);
@@ -354,6 +360,7 @@ function activate(context) {
 			var regex = utils.getRegex();
 
 			var match;
+			const results = [];
 			while ((match = regex.exec(text)) !== null) {
 				while (text[match.index] === '\n' || text[match.index] === '\r') {
 					match.index++;
@@ -367,15 +374,21 @@ function activate(context) {
 					match: line.text
 				};
 				var found = false;
-				searchResults.map(function (s) {
+				results.map(function (s) {
 					if (s.file === result.file && s.line == result.line && s.column == result.column) {
 						found = true;
 					}
 				});
 				if (found === false) {
-					searchResults.push(result);
+					results.push(result);
 					matchesFound = true;
 				}
+			}
+
+			for (const i in results) {
+				const result = results[i];
+				result.author = await blame.getAuthor(result.file, result.line);
+				searchResults.push(result);
 			}
 		}
 
