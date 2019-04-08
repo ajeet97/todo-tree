@@ -8,7 +8,6 @@ function getFileDir(file) {
 }
 
 async function getAuthor(file, line) {
-	// console.log(`running command: git blame ${file} -L ${line + 1},+1 -e -w -M`);
 	const fileDir = getFileDir(file);
 	return new Promise((resolve) => {
 		const cached = cache[file + line];
@@ -23,7 +22,7 @@ async function getAuthor(file, line) {
 					return;
 				}
 
-				const match = stdout.match(/.*<(.+@.+)>.*/,);
+				const match = stdout.match(/.*<([^>]+@[^>]+)>.*/,);
 				const result = (match && match[1]) || 'unknown';
 
 				cache[file + line] = result;

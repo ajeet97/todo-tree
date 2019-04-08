@@ -249,7 +249,7 @@ function activate(context) {
 			search(getOptions(entry), (searchList.length > 0) ? iterateSearchList : function () {
 				debug("Found " + searchResults.length + " items");
 
-				searchComplete = true;
+				searchCompleted = true;
 				applyGlobs();
 				addResultsToTree();
 				setButtonsAndContext();
@@ -310,6 +310,7 @@ function activate(context) {
 		clearFilter();
 
 		interrupted = false;
+		searchCompleted = false;
 
 		status.text = "todo-tree: Scanning...";
 		status.show();
