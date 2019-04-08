@@ -131,7 +131,8 @@ The extension can be customised as follows:
 | todo-tree.customHighlight | <tt>{}</tt> | Set highlights per tag. E.g. `{"TODO":{"foreground":"white","type":"text"},"FIXME":{"icon":"beaker"}}` |
 | todo-tree.expanded<sup>*</sup> | <tt>false</tt> | Set to true if you want new views to be expanded by default |
 | todo-tree.flat<sup>*</sup> | <tt>false</tt> | Set to true if you want new views to be flat by default |
-| todo-tree.grouped<sup>*</sup> | <tt>false</tt> | Set to true if you want new views to be grouped by default |
+| todo-tree.groupedByTag<sup>*</sup> | <tt>false</tt> | Set to true if you want new views to be grouped (by tag) by default |
+| todo-tree.groupedByAuthor<sup>*</sup> | <tt>false</tt> | Set to true if you want new views to be grouped (by author) by default |
 | todo-tree.tagsOnly<sup>*</sup> | <tt>false</tt> | Set to true if you want new views with tags only by default |
 | todo-tree.sortTagsOnlyViewAlphabetically | <tt>false</tt> | Sort items in the tags only view alphabetically instead of by file and line number |
 | todo-tree.statusBar | <tt>none</tt> | What to show in the status bar - nothing (<tt>none</tt>), total count (<tt>total</tt>), counts per tag (<tt>tags</tt>) or the counts for the top three tags (<tt>top three</tt>) |

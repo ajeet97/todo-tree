@@ -263,7 +263,7 @@ function activate(context) {
 		}
 	}
 
-	async function rebuild() {
+	function rebuild() {
 		function getRootFolders() {
 			var rootFolders = [];
 			var valid = true;
@@ -317,6 +317,8 @@ function activate(context) {
 		status.command = "todo-tree.stopScan";
 		status.tooltip = "Click to interrupt scan";
 
+		blame.init(vscode.workspace.workspaceFolders);
+		
 		searchList = getRootFolders();
 
 		if (searchList.length === 0) {
@@ -329,12 +331,14 @@ function activate(context) {
 	function setButtonsAndContext() {
 		var c = vscode.workspace.getConfiguration('todo-tree');
 		var isTagsOnly = context.workspaceState.get('tagsOnly', c.get('tagsOnly', false));
-		var isGrouped = context.workspaceState.get('grouped', c.get('grouped', false));
-		var isCollapsible = !isTagsOnly || isGrouped;
+		var isGroupedByTag = context.workspaceState.get('groupedByTag', c.get('groupedByTag', false));
+		var isGroupedByAuthor = context.workspaceState.get('groupedByAuthor', c.get('groupedByAuthor', false));
+		var isCollapsible = !isTagsOnly || (isGroupedByTag || isGroupedByAuthor);
 		vscode.commands.executeCommand('setContext', 'todo-tree-expanded', context.workspaceState.get('expanded', c.get('expanded', false)));
 		vscode.commands.executeCommand('setContext', 'todo-tree-flat', context.workspaceState.get('flat', c.get('flat', false)));
 		vscode.commands.executeCommand('setContext', 'todo-tree-tags-only', isTagsOnly);
-		vscode.commands.executeCommand('setContext', 'todo-tree-grouped', isGrouped);
+		vscode.commands.executeCommand('setContext', 'todo-tree-groupedByTag', isGroupedByTag);
+		vscode.commands.executeCommand('setContext', 'todo-tree-groupedByAuthor', isGroupedByAuthor);
 		vscode.commands.executeCommand('setContext', 'todo-tree-filtered', context.workspaceState.get('filtered', false));
 		vscode.commands.executeCommand('setContext', 'todo-tree-collapsible', isCollapsible);
 
@@ -355,6 +359,7 @@ function activate(context) {
 		var matchesFound = false;
 
 		removeFileFromSearchResults(document.fileName);
+		blame.deleteFileCache(document.fileName);
 
 		if (isIncluded(document.fileName) === true) {
 			var text = document.getText();
@@ -438,8 +443,18 @@ function activate(context) {
 
 	function collapse() { context.workspaceState.update('expanded', false).then(clearExpansionStateAndRefresh); }
 	function expand() { context.workspaceState.update('expanded', true).then(clearExpansionStateAndRefresh); }
-	function groupByTag() { context.workspaceState.update('grouped', true).then(refresh); }
-	function ungroupByTag() { context.workspaceState.update('grouped', false).then(refresh); }
+	function groupByTag() {
+		context.workspaceState.update('groupedByTag', true).then(() => {
+			context.workspaceState.update('groupedByAuthor', false).then(refresh);
+		});
+	}
+	function ungroupByTag() { context.workspaceState.update('groupedByTag', false).then(refresh); }
+	function groupByAuthor() {
+		context.workspaceState.update('groupedByAuthor', true).then(() => {
+			context.workspaceState.update('groupedByTag', false).then(refresh);
+		});
+	}
+	function ungroupByAuthor() { context.workspaceState.update('groupedByAuthor', false).then(refresh); }
 
 	function clearFilter() {
 		currentFilter = undefined;
@@ -549,6 +564,8 @@ function activate(context) {
 		context.subscriptions.push(vscode.commands.registerCommand('todo-tree.collapse', collapse));
 		context.subscriptions.push(vscode.commands.registerCommand('todo-tree.groupByTag', groupByTag));
 		context.subscriptions.push(vscode.commands.registerCommand('todo-tree.ungroupByTag', ungroupByTag));
+		context.subscriptions.push(vscode.commands.registerCommand('todo-tree.groupByAuthor', groupByAuthor));
+		context.subscriptions.push(vscode.commands.registerCommand('todo-tree.ungroupByAuthor', ungroupByAuthor));
 		context.subscriptions.push(vscode.commands.registerCommand('todo-tree.addTag', addTag));
 		context.subscriptions.push(vscode.commands.registerCommand('todo-tree.removeTag', removeTag));
 		context.subscriptions.push(vscode.commands.registerCommand('todo-tree.toggleStatusBar', toggleStatusBar));

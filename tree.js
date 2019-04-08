@@ -30,6 +30,10 @@ var findTagNode = function (node) {
 	return node.type === PATH && node.tag && node.tag.toLowerCase() === this.toString().toLowerCase();
 };
 
+var findAuthorNode = function (node) {
+	return node.type === PATH && node.author === this.toString();
+}
+
 var findExactPath = function (node) {
 	return node.type === PATH && node.fsPath === this.toString();
 };
@@ -52,6 +56,10 @@ var sortByFilenameAndLine = function (a, b) {
 
 var sortByTagAndLine = function (a, b) {
 	return a.tag > b.tag ? 1 : b.tag > a.tag ? -1 : a.line > b.line ? 1 : -1;
+};
+
+var sortByTagFilenameAndLine = function (a, b) {
+	return a.tag > b.tag ? 1 : b.tag > a.tag ? -1 : sortByFilenameAndLine(a, b);
 };
 
 function createWorkspaceRootNode(folder) {
@@ -116,15 +124,35 @@ function createTagNode(fsPath, tag) {
 	};
 }
 
+function createAuthorNode(fsPath, author) {
+	var id = (buildCounter * 1000000) + nodeCounter++;
+
+	return {
+		isRootAuthorNode: true,
+		type: PATH,
+		label: author,
+		fsPath: author,
+		nodes: [],
+		todos: [],
+		id: id,
+		author: author,
+		visible: true
+	};
+}
+
 function createTodoNode(result) {
 	var id = (buildCounter * 1000000) + nodeCounter++;
 	var text = utils.removeBlockComments(result.match.substr(result.column - 1), result.file);
 	var extracted = utils.extractTag(text);
 	var label = extracted.withoutTag ? extracted.withoutTag : "line " + result.line;
 
-	if (config.shouldGroup() !== true) {
+	if (!config.shouldGroupByTag()) {
 		label = extracted.tag + " " + label;
 	}
+
+	// if (!config.shouldGroupByAuthor()) {
+	// 	label = result.author + ' :: ' + label;
+	// }
 
 	return {
 		type: TODO,
@@ -151,13 +179,23 @@ function locateWorkspaceNode(nodes, filename) {
 	return result;
 }
 
-function locateFlatChildNode(rootNode, result, tag) {
+function locateFlatChildNode(rootNode, result, {author, tag}) {
 	var parentNodes = (rootNode === undefined ? nodes : rootNode.nodes);
-	if (config.shouldGroup() && tag) {
+	if (config.shouldGroupByTag() && tag) {
 		var parentNode = parentNodes.find(findTagNode, tag);
 		if (parentNode === undefined) {
 			parentNode = createPathNode(rootNode ? rootNode.fsPath : JSON.stringify(result), [tag]);
 			parentNode.tag = tag;
+			parentNodes.push(parentNode);
+			parentNodes.sort(sortByFilenameAndLine);
+		}
+		parentNodes = parentNode.nodes;
+	}
+	else if (config.shouldGroupByAuthor() && author) {
+		var parentNode = parentNodes.find(findAuthorNode, author);
+		if (parentNode === undefined) {
+			parentNode = createPathNode(rootNode ? rootNode.fsPath : JSON.stringify(result), [author]);
+			parentNode.author = author;
 			parentNodes.push(parentNode);
 			parentNodes.sort(sortByFilenameAndLine);
 		}
@@ -174,16 +212,26 @@ function locateFlatChildNode(rootNode, result, tag) {
 	return childNode;
 }
 
-function locateTreeChildNode(rootNode, pathElements, tag) {
+function locateTreeChildNode(rootNode, pathElements, {author, tag}) {
 	var childNode;
 
 	var parentNodes = rootNode.nodes;
 
-	if (config.shouldGroup() && tag) {
+	if (config.shouldGroupByTag() && tag) {
 		var parentNode = parentNodes.find(findTagNode, tag);
 		if (parentNode === undefined) {
 			parentNode = createPathNode(rootNode ? rootNode.fsPath : JSON.stringify(result), [tag]);
 			parentNode.tag = tag;
+			parentNodes.push(parentNode);
+			parentNodes.sort(sortByLabelAndLine);
+		}
+		parentNodes = parentNode.nodes;
+	}
+	else if (config.shouldGroupByAuthor() && author) {
+		var parentNode = parentNodes.find(findAuthorNode, author);
+		if (parentNode === undefined) {
+			parentNode = createPathNode(rootNode ? rootNode.fsPath : JSON.stringify(result), [author]);
+			parentNode.author = author;
 			parentNodes.push(parentNode);
 			parentNodes.sort(sortByLabelAndLine);
 		}
@@ -248,7 +296,7 @@ class TreeNodeProvider {
 			});
 			var rootNodes = availableNodes.filter(isVisible);
 			if (rootNodes.length > 0) {
-				if (config.shouldGroup()) {
+				if (config.shouldGroupByTag()) {
 					rootNodes.sort(function (a, b) {
 						return a.name > b.name;
 					});
@@ -325,7 +373,7 @@ class TreeNodeProvider {
 				treeItem.iconPath = icons.getIcon(this._context, node.tag ? node.tag : node.label);
 				var format = config.labelFormat();
 				if (format !== "") {
-					treeItem.label = node.author + ' :: ' + utils.formatLabel(format, node) + (node.pathLabel ? (" " + node.pathLabel) : "");
+					treeItem.label = utils.formatLabel(format, node) + (node.pathLabel ? (" " + node.pathLabel) : "");
 				}
 
 				treeItem.command = {
@@ -363,11 +411,18 @@ class TreeNodeProvider {
 
 	refresh() {
 		if (config.shouldShowTagsOnly()) {
-			nodes.sort(config.shouldGroup() ? sortByTagAndLine : (config.shouldSortTagsOnlyViewAlphabetically() ? sortByLabelAndLine : sortByFilenameAndLine));
+			let sortBy = sortByFilenameAndLine;
+			if (config.shouldGroupByTag()) sortBy = sortByTagAndLine;
+			else if (config.shouldGroupByAuthor() || config.shouldSortTagsOnlyViewAlphabetically()) sortBy = sortByLabelAndLine;
+
+			nodes.sort(sortBy);
+
+			sortBy = sortByFilenameAndLine;
+			if (config.shouldGroupByAuthor()) sortBy = sortByTagFilenameAndLine;
+			else if (config.shouldSortTagsOnlyViewAlphabetically()) sortBy = sortByLabelAndLine;
+
 			nodes.forEach(function (node) {
-				if (node.todos) {
-					node.todos.sort(config.shouldSortTagsOnlyViewAlphabetically() ? sortByLabelAndLine : sortByFilenameAndLine);
-				}
+				if (node.todos) node.todos.sort(sortBy);
 			});
 		}
 
@@ -428,11 +483,23 @@ class TreeNodeProvider {
 
 		var childNode;
 		if (config.shouldShowTagsOnly()) {
-			if (config.shouldGroup()) {
+			if (config.shouldGroupByTag()) {
 				if (todoNode.tag) {
 					childNode = nodes.find(findTagNode, todoNode.tag);
 					if (childNode === undefined) {
 						childNode = createTagNode(result.file, todoNode.tag);
+						nodes.push(childNode);
+					}
+				}
+				else if (nodes.find(findTodoNode, todoNode) === undefined) {
+					nodes.push(todoNode);
+				}
+			}
+			else if (config.shouldGroupByAuthor()) {
+				if (todoNode.author) {
+					childNode = nodes.find(findAuthorNode, todoNode.author);
+					if (childNode === undefined) {
+						childNode = createAuthorNode(result.file, todoNode.author);
 						nodes.push(childNode);
 					}
 				}
@@ -447,7 +514,7 @@ class TreeNodeProvider {
 			}
 		}
 		else if (config.shouldFlatten() || rootNode === undefined) {
-			childNode = locateFlatChildNode(rootNode, result, todoNode.tag);
+			childNode = locateFlatChildNode(rootNode, result, todoNode);
 		}
 		else if (rootNode) {
 			var relativePath = path.relative(rootNode.fsPath, result.file);
@@ -455,7 +522,7 @@ class TreeNodeProvider {
 			if (relativePath !== "") {
 				pathElements = relativePath.split(path.sep);
 			}
-			childNode = locateTreeChildNode(rootNode, pathElements, todoNode.tag);
+			childNode = locateTreeChildNode(rootNode, pathElements, todoNode);
 		}
 
 		if (childNode) {
@@ -491,7 +558,7 @@ class TreeNodeProvider {
 			{
 				keep = false;
 			}
-			else if (child.fsPath === filename || child.isRootTagNode) {
+			else if (child.fsPath === filename || child.isRootTagNode || child.isRootAuthorNode) {
 				if (config.shouldShowTagsOnly()) {
 					if (child.todos) {
 						child.todos = child.todos.filter(function (todo) {

@@ -79,28 +79,38 @@
 				},
 				{
 					"command": "todo-tree.groupByTag",
-					"when": "view =~ /todo-tree/ && todo-tree-grouped == false",
+					"when": "view =~ /todo-tree/ && todo-tree-groupedByTag == false",
 					"group": "navigation@3"
 				},
 				{
 					"command": "todo-tree.ungroupByTag",
-					"when": "view =~ /todo-tree/ && todo-tree-grouped == true",
+					"when": "view =~ /todo-tree/ && todo-tree-groupedByTag == true",
 					"group": "navigation@3"
+				},
+				{
+					"command": "todo-tree.groupByAuthor",
+					"when": "view =~ /todo-tree/ && todo-tree-groupedByAuthor == false",
+					"group": "navigation@4"
+				},
+				{
+					"command": "todo-tree.ungroupByAuthor",
+					"when": "view =~ /todo-tree/ && todo-tree-groupedByAuthor == true",
+					"group": "navigation@4"
 				},
 				{
 					"command": "todo-tree.filter",
 					"when": "view =~ /todo-tree/ && todo-tree-filtered == false",
-					"group": "navigation@4"
+					"group": "navigation@5"
 				},
 				{
 					"command": "todo-tree.filterClear",
 					"when": "view =~ /todo-tree/ && todo-tree-filtered == true",
-					"group": "navigation@4"
+					"group": "navigation@5"
 				},
 				{
 					"command": "todo-tree.refresh",
 					"when": "view =~ /todo-tree/",
-					"group": "navigation@5"
+					"group": "navigation@6"
 				}
 			]
 		},
@@ -193,6 +203,24 @@
 				"icon": {
 					"dark": "resources/icons/dark/notag.svg",
 					"light": "resources/icons/light/notag.svg"
+				}
+			},
+			{
+				"command": "todo-tree.groupByAuthor",
+				"title": "Group by Author",
+				"category": "Todo Tree",
+				"icon": {
+					"dark": "resources/icons/dark/user.svg",
+					"light": "resources/icons/light/user.svg"
+				}
+			},
+			{
+				"command": "todo-tree.ungroupByAuthor",
+				"title": "Ungroup by Author",
+				"category": "Todo Tree",
+				"icon": {
+					"dark": "resources/icons/dark/nouser.svg",
+					"light": "resources/icons/light/nouser.svg"
 				}
 			},
 			{
@@ -347,7 +375,7 @@
 				},
 				"todo-tree.showCountsInTree": {
 					"type": "boolean",
-					"default": false,
+					"default": true,
 					"markdownDescription": "Show counts of TODOs in the tree"
 				},
 				"todo-tree.labelFormat": {
@@ -360,10 +388,15 @@
 					"default": false,
 					"markdownDescription": "When opening new workspaces, show the tree initially fully expanded"
 				},
-				"todo-tree.grouped": {
+				"todo-tree.groupedByTag": {
 					"type": "boolean",
 					"default": false,
 					"markdownDescription": "When opening new workspaces, show the tree initially grouped by tag"
+				},
+				"todo-tree.groupedByAuthor": {
+					"type": "boolean",
+					"default": false,
+					"markdownDescription": "When opening new workspaces, show the tree initially grouped by author"
 				},
 				"todo-tree.flat": {
 					"type": "boolean",

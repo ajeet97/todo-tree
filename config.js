@@ -8,8 +8,12 @@ function init(c) {
 	context = c;
 }
 
-function shouldGroup() {
-	return context.workspaceState.get('grouped', vscode.workspace.getConfiguration('todo-tree').get('grouped', false));
+function shouldGroupByTag() {
+	return context.workspaceState.get('groupedByTag', vscode.workspace.getConfiguration('todo-tree').get('groupedByTag', false));
+}
+
+function shouldGroupByAuthor() {
+	return context.workspaceState.get('groupedByAuthor', vscode.workspace.getConfiguration('todo-tree').get('groupedByAuthor', false));
 }
 
 function shouldExpand() {
@@ -25,7 +29,7 @@ function shouldShowTagsOnly() {
 }
 
 function shouldShowCounts() {
-	return vscode.workspace.getConfiguration('todo-tree').get('showCountsInTree', false);
+	return vscode.workspace.getConfiguration('todo-tree').get('showCountsInTree', true);
 }
 
 function shouldShowLineNumbers() {
@@ -93,7 +97,8 @@ function labelFormat() {
 }
 
 module.exports.init = init;
-module.exports.shouldGroup = shouldGroup;
+module.exports.shouldGroupByTag = shouldGroupByTag;
+module.exports.shouldGroupByAuthor = shouldGroupByAuthor;
 module.exports.shouldExpand = shouldExpand;
 module.exports.shouldFlatten = shouldFlatten;
 module.exports.shouldShowTagsOnly = shouldShowTagsOnly;
